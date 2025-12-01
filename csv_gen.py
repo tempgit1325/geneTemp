@@ -5,7 +5,7 @@ import os
 # --- PARAMETRY ---
 days = 7
 shifts = 3
-employees = 10  # liczba pracowników
+employees = 28  # liczba pracowników
 
 folder = "data_csv"
 os.makedirs(folder, exist_ok=True)
