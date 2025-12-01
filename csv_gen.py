@@ -3,7 +3,7 @@ import csv
 import os
 
 # --- PARAMETRY ---
-days = 7
+days = 30
 shifts = 3
 employees = 28  # liczba pracowników
 
