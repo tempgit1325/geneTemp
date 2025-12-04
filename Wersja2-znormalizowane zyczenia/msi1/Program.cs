@@ -97,6 +97,7 @@ namespace GeneticScheduling
         }
 
 
+
         static void Main(string[] args)
         {
             int[][,] population = new int[populationSize][,];
@@ -105,6 +106,8 @@ namespace GeneticScheduling
 
             var initpop = (int[,])population[0].Clone();
             string logFileName = GetLogFileName();
+
+            string ResultFileName = GetResultFileName();
 
             using (StreamWriter writer = new StreamWriter(logFileName, false, new UTF8Encoding(true)))
             {
@@ -213,148 +216,241 @@ namespace GeneticScheduling
                 PrintScheduleToConsole(initpop);
                 Console.WriteLine("\nFinal Schedule:");
                 PrintScheduleToConsole(population[0]);
-            }
-        }
 
-        static string GetShiftHeaders(string delimiter, bool forConsole = false)
-        {
-            StringBuilder sb = new StringBuilder();
-            for (int d = 1; d <= numActualDays; d++)
-            {
-                for (int s = 1; s <= numShiftsPerDay; s++)
+                using (StreamWriter writer2 = new StreamWriter(ResultFileName, false, new UTF8Encoding(true)))
                 {
-                    sb.Append($"D{d}S{s}");
-                    if (!(d == numActualDays && s == numShiftsPerDay))
-                        sb.Append(delimiter);
+                    string Header = GetShiftHeaders(","); // D1S1,D1S2,D1S3
+
+                    writer2.Write("Id,");
+
+                    // Preferences
+                    for (int i = 0; i < numEmployees; i++)
+                    {
+                        string[] headers = Header.Split(',');
+                        for (int j = 0; j < headers.Length; j++)
+                        {
+                            writer2.Write($"P_{headers[j]}");
+                            if (i != numEmployees - 1 || j != headers.Length - 1)
+                                writer2.Write(",");
+                        }
+                    }
+
+                    // Requirements
+                    for (int i = 0; i < numEmployees; i++)
+                    {
+                        string[] headers = Header.Split(',');
+                        for (int j = 0; j < headers.Length; j++)
+                        {
+                            writer2.Write($",FR_{headers[j]}");
+                        }
+                    }
+
+                    // Schedule
+                    for (int i = 0; i < numEmployees; i++)
+                    {
+                        string[] headers = Header.Split(',');
+                        for (int j = 0; j < headers.Length; j++)
+                        {
+                            writer2.Write($",S_{headers[j]}");
+                        }
+                    }
+
+                    writer2.WriteLine(); 
+
+                    for (int i = 0; i < numEmployees; i++)
+                    {
+                        writer2.Write($"{i},");
+
+                        // Preferences
+                        for (int j = 0; j < numTimeSlots; j++)
+                        {
+                            if (j >= employeePreferences.GetLength(1)) break;
+                            writer2.Write(employeePreferences[i, j]);
+                            writer2.Write(",");
+                        }
+
+                        // Requirements
+                        for (int j = 0; j < numTimeSlots; j++)
+                        {
+                            if (j >= requiredWorkersPerShiftDisplay.Length) break;
+                            writer2.Write(requiredWorkersPerShiftDisplay[j]);
+                            writer2.Write(",");
+                        }
+
+                        // Schedule
+                        for (int j = 0; j < numTimeSlots; j++)
+                        {
+                            if (j >= finalSchedule.GetLength(1)) break;
+                            writer2.Write(finalSchedule[i, j]);
+                            if (j < numTimeSlots - 1) writer2.Write(",");
+                        }
+
+                        writer2.WriteLine();
+                    }
                 }
             }
-            return sb.ToString();
-        }
 
-        static string GetLogFileName()
-        {
-            string logDirectory = "../../../LOGI_ALGORYTMU";
-            if (!Directory.Exists(logDirectory))
-                Directory.CreateDirectory(logDirectory);
 
-            int logNumber = 1;
-            string logFileName;
-            do
+
+            static string GetResultFileName()
             {
-                logFileName = Path.Combine(logDirectory, $"genetic_log{logNumber}.csv");
-                logNumber++;
-            } while (File.Exists(logFileName));
-            return logFileName;
-        }
+                string logDirectory = "../../../wyniki";
+                if (!Directory.Exists(logDirectory))
+                    Directory.CreateDirectory(logDirectory);
 
-        static int[,] GenerateSchedule()
-        {
-            int[,] schedule = new int[numEmployees, numTimeSlots];
-            for (int i = 0; i < numEmployees; i++)
-                for (int j = 0; j < numTimeSlots; j++)
-                    schedule[i, j] = rand.Next(2);
-            return schedule;
-        }
-
-        static int CalculateFitness(int[,] schedule)
-        {
-            int workersPenalty = CalculateWorkersPenalty(schedule);
-            int preferenceBonus = CalculatePreferenceBonus(schedule);
-            return preferenceBonus - workersPenalty;
-        }
-
-        static int CalculateWorkersPenalty(int[,] schedule)
-        {
-            int penalty = 0;
-            for (int j = 0; j < numTimeSlots; j++)
-            {
-                if (j >= requiredWorkersPerShiftNumeric.Length) break; // blokada
-                int actualWorkers = 0;
-                for (int i = 0; i < numEmployees; i++)
+                int logNumber = 1;
+                string logFileName;
+                do
                 {
-                    actualWorkers += schedule[i, j];
-                }
-                penalty += FitnessConstants.workersPerDayPenalty * Math.Abs(requiredWorkersPerShiftNumeric[j] - actualWorkers);
+                    logFileName = Path.Combine(logDirectory, $"genetic_Result{logNumber}.csv");
+                    logNumber++;
+                } while (File.Exists(logFileName));
+                return logFileName;
             }
-            return penalty;
-        }
 
-        static int CalculatePreferenceBonus(int[,] schedule)
-        {
-            int bonus = 0;
-            int numPrefShifts = employeePreferences.GetLength(1);
-            for (int i = 0; i < numEmployees; i++)
+           
+
+
+            static string GetShiftHeaders(string delimiter, bool forConsole = false)
             {
-                for (int j = 0; j < numPrefShifts; j++)
+                StringBuilder sb = new StringBuilder();
+                for (int d = 1; d <= numActualDays; d++)
                 {
-                    if (j >= schedule.GetLength(1)) break; // blokada
-                    if (schedule[i, j] == employeePreferences[i,j])
-                        bonus +=  FitnessConstants.EmployeePreferenceMultiplier;
+                    for (int s = 1; s <= numShiftsPerDay; s++)
+                    {
+                        sb.Append($"D{d}S{s}");
+                        if (!(d == numActualDays && s == numShiftsPerDay))
+                            sb.Append(delimiter);
+                    }
                 }
+                return sb.ToString();
             }
-            return bonus;
-        }
 
-        static int[,] Crossover(int[,] parent1, int[,] parent2)
-        {
-            int[,] child = new int[numEmployees, numTimeSlots];
-            int crossoverType = rand.Next(2);
-
-            if (crossoverType == 0)
+            static string GetLogFileName()
             {
-                int splitPoint = rand.Next(1, numTimeSlots);
+                string logDirectory = "../../../LOGI_ALGORYTMU";
+                if (!Directory.Exists(logDirectory))
+                    Directory.CreateDirectory(logDirectory);
+
+                int logNumber = 1;
+                string logFileName;
+                do
+                {
+                    logFileName = Path.Combine(logDirectory, $"genetic_log{logNumber}.csv");
+                    logNumber++;
+                } while (File.Exists(logFileName));
+                return logFileName;
+            }
+
+            static int[,] GenerateSchedule()
+            {
+                int[,] schedule = new int[numEmployees, numTimeSlots];
                 for (int i = 0; i < numEmployees; i++)
                     for (int j = 0; j < numTimeSlots; j++)
-                        child[i, j] = (j < splitPoint) ? parent1[i, j] : parent2[i, j];
+                        schedule[i, j] = rand.Next(2);
+                return schedule;
             }
-            else
+
+            static int CalculateFitness(int[,] schedule)
             {
-                for (int i = 0; i < numEmployees; i++)
-                    for (int j = 0; j < numTimeSlots; j++)
-                        child[i, j] = rand.NextDouble() < 0.5 ? parent1[i, j] : parent2[i, j];
+                int workersPenalty = CalculateWorkersPenalty(schedule);
+                int preferenceBonus = CalculatePreferenceBonus(schedule);
+                return preferenceBonus - workersPenalty;
             }
-            return child;
-        }
 
-        static int[,] Mutate(int[,] schedule)
-        {
-            int[,] mutatedSchedule = (int[,])schedule.Clone();
-            double mutationTypeRand = rand.NextDouble();
-
-            if (mutationTypeRand < 0.5)
+            static int CalculateWorkersPenalty(int[,] schedule)
             {
-                int emp = rand.Next(numEmployees);
-                int slot = rand.Next(numTimeSlots);
-                mutatedSchedule[emp, slot] = 1 - mutatedSchedule[emp, slot];
-            }
-            else
-            {
-                int emp = rand.Next(numEmployees);
-                int slot1 = rand.Next(numTimeSlots);
-                int slot2 = rand.Next(numTimeSlots);
-                if (slot1 != slot2)
-                    (mutatedSchedule[emp, slot1], mutatedSchedule[emp, slot2]) = (mutatedSchedule[emp, slot2], mutatedSchedule[emp, slot1]);
-            }
-            return mutatedSchedule;
-        }
-
-        static void PrintScheduleToConsole(int[,] schedule)
-        {
-            Console.Write("      ");
-            for (int d = 1; d <= numActualDays; d++)
-                for (int s = 1; s <= numShiftsPerDay; s++)
-                    Console.Write($"D{d}S{s}\t");
-            Console.WriteLine();
-
-            for (int i = 0; i < numEmployees; i++)
-            {
-                Console.Write($"P{i + 1}\t");
+                int penalty = 0;
                 for (int j = 0; j < numTimeSlots; j++)
                 {
-                    if (j >= schedule.GetLength(1)) break; // blokada
-                    Console.Write(schedule[i, j] + "\t");
+                    if (j >= requiredWorkersPerShiftNumeric.Length) break; // blokada
+                    int actualWorkers = 0;
+                    for (int i = 0; i < numEmployees; i++)
+                    {
+                        actualWorkers += schedule[i, j];
+                    }
+                    penalty += FitnessConstants.workersPerDayPenalty * Math.Abs(requiredWorkersPerShiftNumeric[j] - actualWorkers);
                 }
+                return penalty;
+            }
+
+            static int CalculatePreferenceBonus(int[,] schedule)
+            {
+                int bonus = 0;
+                int numPrefShifts = employeePreferences.GetLength(1);
+                for (int i = 0; i < numEmployees; i++)
+                {
+                    for (int j = 0; j < numPrefShifts; j++)
+                    {
+                        if (j >= schedule.GetLength(1)) break; // blokada
+                        if (schedule[i, j] == employeePreferences[i, j])
+                            bonus += FitnessConstants.EmployeePreferenceMultiplier;
+                    }
+                }
+                return bonus;
+            }
+
+            static int[,] Crossover(int[,] parent1, int[,] parent2)
+            {
+                int[,] child = new int[numEmployees, numTimeSlots];
+                int crossoverType = rand.Next(2);
+
+                if (crossoverType == 0)
+                {
+                    int splitPoint = rand.Next(1, numTimeSlots);
+                    for (int i = 0; i < numEmployees; i++)
+                        for (int j = 0; j < numTimeSlots; j++)
+                            child[i, j] = (j < splitPoint) ? parent1[i, j] : parent2[i, j];
+                }
+                else
+                {
+                    for (int i = 0; i < numEmployees; i++)
+                        for (int j = 0; j < numTimeSlots; j++)
+                            child[i, j] = rand.NextDouble() < 0.5 ? parent1[i, j] : parent2[i, j];
+                }
+                return child;
+            }
+
+            static int[,] Mutate(int[,] schedule)
+            {
+                int[,] mutatedSchedule = (int[,])schedule.Clone();
+                double mutationTypeRand = rand.NextDouble();
+
+                if (mutationTypeRand < 0.5)
+                {
+                    int emp = rand.Next(numEmployees);
+                    int slot = rand.Next(numTimeSlots);
+                    mutatedSchedule[emp, slot] = 1 - mutatedSchedule[emp, slot];
+                }
+                else
+                {
+                    int emp = rand.Next(numEmployees);
+                    int slot1 = rand.Next(numTimeSlots);
+                    int slot2 = rand.Next(numTimeSlots);
+                    if (slot1 != slot2)
+                        (mutatedSchedule[emp, slot1], mutatedSchedule[emp, slot2]) = (mutatedSchedule[emp, slot2], mutatedSchedule[emp, slot1]);
+                }
+                return mutatedSchedule;
+            }
+
+            static void PrintScheduleToConsole(int[,] schedule)
+            {
+                Console.Write("      ");
+                for (int d = 1; d <= numActualDays; d++)
+                    for (int s = 1; s <= numShiftsPerDay; s++)
+                        Console.Write($"D{d}S{s}\t");
                 Console.WriteLine();
+
+                for (int i = 0; i < numEmployees; i++)
+                {
+                    Console.Write($"P{i + 1}\t");
+                    for (int j = 0; j < numTimeSlots; j++)
+                    {
+                        if (j >= schedule.GetLength(1)) break; // blokada
+                        Console.Write(schedule[i, j] + "\t");
+                    }
+                    Console.WriteLine();
+                }
             }
         }
     }

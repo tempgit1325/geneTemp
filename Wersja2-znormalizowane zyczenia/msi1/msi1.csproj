@@ -7,4 +7,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="LOGI_ALGORYTMU\" />
+    <Folder Include="wyniki\" />
+  </ItemGroup>
+
 </Project>

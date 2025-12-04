@@ -1,3 +1,4 @@
 bin/
 obj/
-LOGI_ALGORYTMU/
+LOGI_ALGORYTMU/*
+wyniki/*
