@@ -219,44 +219,30 @@ namespace GeneticScheduling
 
                 using (StreamWriter writer2 = new StreamWriter(ResultFileName, false, new UTF8Encoding(true)))
                 {
-                    string Header = GetShiftHeaders(","); // D1S1,D1S2,D1S3
+                    string Header = GetShiftHeaders(","); // np. D1S1,D1S2,D1S3 ...
 
                     writer2.Write("Id,");
 
-                    // Preferences
-                    for (int i = 0; i < numEmployees; i++)
+                    string[] headers = Header.Split(',');
+
+                    // P headers
+                    foreach (var h in headers)
+                        writer2.Write($"P_{h},");
+
+                    // FR headers
+                    foreach (var h in headers)
+                        writer2.Write($"FR_{h},");
+
+                    // S headers
+                    for (int i = 0; i < headers.Length; i++)
                     {
-                        string[] headers = Header.Split(',');
-                        for (int j = 0; j < headers.Length; j++)
-                        {
-                            writer2.Write($"P_{headers[j]}");
-                            if (i != numEmployees - 1 || j != headers.Length - 1)
-                                writer2.Write(",");
-                        }
+                        writer2.Write($"S_{headers[i]}");
+                        if (i < headers.Length - 1) writer2.Write(",");
                     }
 
-                    // Requirements
-                    for (int i = 0; i < numEmployees; i++)
-                    {
-                        string[] headers = Header.Split(',');
-                        for (int j = 0; j < headers.Length; j++)
-                        {
-                            writer2.Write($",FR_{headers[j]}");
-                        }
-                    }
+                    writer2.WriteLine();
 
-                    // Schedule
-                    for (int i = 0; i < numEmployees; i++)
-                    {
-                        string[] headers = Header.Split(',');
-                        for (int j = 0; j < headers.Length; j++)
-                        {
-                            writer2.Write($",S_{headers[j]}");
-                        }
-                    }
-
-                    writer2.WriteLine(); 
-
+                    // DATA ROWS
                     for (int i = 0; i < numEmployees; i++)
                     {
                         writer2.Write($"{i},");
@@ -265,22 +251,21 @@ namespace GeneticScheduling
                         for (int j = 0; j < numTimeSlots; j++)
                         {
                             if (j >= employeePreferences.GetLength(1)) break;
-                            writer2.Write(employeePreferences[i, j]);
-                            writer2.Write(",");
+                            writer2.Write(employeePreferences[i, j] + ",");
                         }
 
                         // Requirements
                         for (int j = 0; j < numTimeSlots; j++)
                         {
                             if (j >= requiredWorkersPerShiftDisplay.Length) break;
-                            writer2.Write(requiredWorkersPerShiftDisplay[j]);
-                            writer2.Write(",");
+                            writer2.Write(requiredWorkersPerShiftDisplay[j] + ",");
                         }
 
                         // Schedule
                         for (int j = 0; j < numTimeSlots; j++)
                         {
                             if (j >= finalSchedule.GetLength(1)) break;
+
                             writer2.Write(finalSchedule[i, j]);
                             if (j < numTimeSlots - 1) writer2.Write(",");
                         }
@@ -288,6 +273,9 @@ namespace GeneticScheduling
                         writer2.WriteLine();
                     }
                 }
+
+
+
             }
 
 
