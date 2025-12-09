@@ -28,7 +28,7 @@ namespace GeneticScheduling
         static int[,] employeePreferences;
         public static class FitnessConstants
         {
-            public const int workersPerDayPenalty = 1;
+            public const int workersPerDayPenalty = 50;
             public const int EmployeePreferenceMultiplier = 10;
         }
 
@@ -199,7 +199,11 @@ namespace GeneticScheduling
                 writer.WriteLine();
                 writer.WriteLine("Schedule");
                 writer.WriteLine($" ;{shiftHeaderString}");
+
                 int[,] finalSchedule = population[0];
+
+                
+
                 for (int i = 0; i < numEmployees; i++)
                 {
                     writer.Write($"P{i + 1};");
@@ -210,6 +214,16 @@ namespace GeneticScheduling
                         if (j < numTimeSlots - 1) writer.Write(';');
                     }
                     writer.WriteLine();
+                }
+
+                Console.WriteLine("\nFitness dla każdego pracownika:");
+                writer.WriteLine();
+                writer.WriteLine("FitnessForEachWorker");
+                for (int i = 0; i < numEmployees; i++)
+                {
+                    int fit = CalculateEmployeeFitnessNorm(finalSchedule, i);
+                    writer.WriteLine($"{fit}");
+                    Console.WriteLine($"P{i + 1}: {fit}");
                 }
 
                 Console.WriteLine("\nInitial Schedule:");
@@ -232,13 +246,16 @@ namespace GeneticScheduling
                     // FR headers
                     foreach (var h in headers)
                         writer2.Write($"FR_{h},");
-
+                    
                     // S headers
-                    for (int i = 0; i < headers.Length; i++)
-                    {
-                        writer2.Write($"S_{headers[i]}");
-                        if (i < headers.Length - 1) writer2.Write(",");
-                    }
+                    foreach (var h in headers)
+                        writer2.Write($"S_{h},");
+
+                    writer2.Write("worker_fitness,");
+
+                    writer2.Write("mismatchWorkerRequirments,");
+
+                    writer2.Write("mismatchFirmRequirments");
 
                     writer2.WriteLine();
 
@@ -270,15 +287,25 @@ namespace GeneticScheduling
                             if (j < numTimeSlots - 1) writer2.Write(",");
                         }
 
+                        writer2.Write(",");
+
+                        Console.WriteLine("\nFitness dla każdego pracownika:");
+                        int[] fitArray = CalculateEmployeeFitness(finalSchedule, i);
+                        int fitness = fitArray.Sum(); 
+                        writer2.Write($"{fitness},");
+
+                        Console.WriteLine("UnsolvedWorkerRequirmnts:");
+                        int UnsolvedWorkerR = UnsolvedWorkerRequirmnts(finalSchedule);
+                        writer2.Write($"{UnsolvedWorkerR},");
+
+                        Console.WriteLine("UnsolvedFirmRequirmnts:");
+                        int UnsolvedFirmR = UnsolvedFirmRequirmnts(finalSchedule);
+                        writer2.Write($"{UnsolvedFirmR}");
+
                         writer2.WriteLine();
                     }
                 }
-
-
-
             }
-
-
 
             static string GetResultFileName()
             {
@@ -295,9 +322,6 @@ namespace GeneticScheduling
                 } while (File.Exists(logFileName));
                 return logFileName;
             }
-
-           
-
 
             static string GetShiftHeaders(string delimiter, bool forConsole = false)
             {
@@ -320,13 +344,7 @@ namespace GeneticScheduling
                 if (!Directory.Exists(logDirectory))
                     Directory.CreateDirectory(logDirectory);
 
-                int logNumber = 1;
-                string logFileName;
-                do
-                {
-                    logFileName = Path.Combine(logDirectory, $"genetic_log{logNumber}.csv");
-                    logNumber++;
-                } while (File.Exists(logFileName));
+                string logFileName = Path.Combine(logDirectory, $"genetic_log.csv");
                 return logFileName;
             }
 
@@ -344,6 +362,49 @@ namespace GeneticScheduling
                 int workersPenalty = CalculateWorkersPenalty(schedule);
                 int preferenceBonus = CalculatePreferenceBonus(schedule);
                 return preferenceBonus - workersPenalty;
+            }
+
+            static int UnsolvedWorkerRequirmnts(int[,] schedule)
+            {
+                int workersPenalty = CalculateWorkersPenalty(schedule);
+                return workersPenalty;
+            }
+
+            static int UnsolvedFirmRequirmnts(int[,] schedule)
+            {
+                int preferenceBonus = CalculatePreferenceBonus(schedule);
+                int pref = preferenceBonus / 10;
+                return pref;
+            }
+
+            static int CalculateEmployeeFitnessNorm(int[,] schedule, int employeeIndex)
+            {
+                int bonus = 0;
+                int numPref = employeePreferences.GetLength(1);
+
+                for (int j = 0; j < numPref; j++)
+                {
+                    if (schedule[employeeIndex, j] == employeePreferences[employeeIndex, j])
+                        bonus += FitnessConstants.EmployeePreferenceMultiplier;
+                }
+
+                return bonus;
+            }
+
+            static int[] CalculateEmployeeFitness(int[,] schedule, int employeeIndex)
+            {
+                int numPref = employeePreferences.GetLength(1);
+                int[] bonus = new int[numPref];  // tablica bonusów dla każdej zmiany
+
+                for (int j = 0; j < numPref; j++)
+                {
+                    if (schedule[employeeIndex, j] == employeePreferences[employeeIndex, j])
+                        bonus[j] = FitnessConstants.EmployeePreferenceMultiplier;
+                    else
+                        bonus[j] = 0;
+                }
+
+                return bonus; // zwraca tablicę, ale CSV zapisze tylko jedną wartość
             }
 
             static int CalculateWorkersPenalty(int[,] schedule)
